@@ -1,0 +1,15 @@
+[package]
+name = "nih-wry"
+version = "0.1.0"
+edition = "2024"
+authors = ["Delton Ding <dsh0416@gmail.com>"]
+license = "MIT"
+
+keywords = ["audio", "plugin", "vst", "vst3", "wry", "webview"]
+description = "A Rust library for creating audio plugins with Wry webview support."
+repository = "https://github.com/dsh0416/nih-wry"
+
+[dependencies]
+nih_plug = { git = "https://github.com/robbert-vdh/nih-plug.git", branch = "master", default-features = false }
+wry = { version = "0.51.2", features = ["devtools"] }
+raw-window-handle = "0.6.2"
