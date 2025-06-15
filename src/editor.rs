@@ -1,4 +1,4 @@
-use std::{num::NonZero, sync::{Arc, RwLock}};
+use std::{num::NonZero, sync::{Arc, Mutex, RwLock}};
 
 use nih_plug::{editor::{Editor, ParentWindowHandle}, prelude::GuiContext};
 use raw_window_handle::{HandleError, HasWindowHandle, WindowHandle};
@@ -7,6 +7,7 @@ use wry::{WebViewAttributes, WebViewBuilder};
 pub(crate) struct WryEditor<T> {
     pub(crate) user_state: Arc<RwLock<T>>,
     pub(crate) url: String,
+    pub(crate) webview_spawned: Arc<Mutex<Vec<Arc<Mutex<wry::WebView>>>>>,
 }
 
 struct ParentWindowHandleAdapter(nih_plug::editor::ParentWindowHandle);
@@ -34,7 +35,7 @@ impl HasWindowHandle for ParentWindowHandleAdapter {
 }
 
 struct WryEditorHandle {
-    webview: Arc<wry::WebView>,
+    webview: Arc<Mutex<wry::WebView>>,
 }
 
 impl<T> Editor for WryEditor<T>
@@ -44,7 +45,7 @@ where
     fn spawn(
         &self,
         parent: ParentWindowHandle,
-        context: Arc<dyn GuiContext>,
+        _context: Arc<dyn GuiContext>,
     ) -> Box<dyn std::any::Any + Send + 'static> {
        let webview = WebViewBuilder::with_attributes(
         WebViewAttributes {
@@ -52,12 +53,26 @@ where
             devtools: true,
             ..Default::default()
         }
-       ).build_as_child(&ParentWindowHandleAdapter(parent)).unwrap();
+       )
+        .build_as_child(&ParentWindowHandleAdapter(parent)).unwrap();
 
-       todo!()
-    }    
+        let webview_handle = Arc::new(Mutex::new(webview));
+
+        self.webview_spawned.lock().unwrap().push(webview_handle.clone());
+        Box::new(WryEditorHandle { 
+            webview: webview_handle.clone(),
+         })
+    }
+
     fn size(&self) -> (u32, u32) {
-        todo!()
+        let webview_vec = self.webview_spawned.lock().unwrap();
+        let webview = webview_vec.first()
+            .expect("msg: no webview spawned")
+            .lock()
+            .unwrap();
+        let bounds = webview.bounds().expect("failed to get webview bounds");
+        let size = bounds.size.to_logical::<u32>(1.0);
+        (size.width, size.height)
     }
     
     fn set_scale_factor(&self, _factor: f32) -> bool {
@@ -77,3 +92,7 @@ where
         todo!()
     }
 }
+
+/// Is there a way around having this requirement?
+unsafe impl Send for WryEditorHandle {}
+unsafe impl<T> Send for WryEditor<T> where T: 'static + Send + Sync {}

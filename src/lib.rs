@@ -1,4 +1,4 @@
-use std::sync::{Arc, RwLock};
+use std::sync::{Arc, Mutex, RwLock};
 
 use nih_plug::editor::Editor;
 
@@ -14,5 +14,6 @@ where
     Some(Box::new(editor::WryEditor {
         user_state: Arc::new(RwLock::new(user_state)),
         url: url.clone(),
+        webview_spawned: Arc::new(Mutex::new(Vec::new())),
     }))
 }
